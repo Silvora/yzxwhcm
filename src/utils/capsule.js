@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import dataBase from '@/assets/data';
 
 const {global, data} = dataBase;
@@ -13,7 +15,9 @@ const ROT_SPEED = logo_speed; // 旋转速度（弧度/毫秒）
 
 // --- 交互状态 ---
 let hoverPause = false;        // 鼠标是否悬停在左侧环上
-let selected = {layer: null, index: null, side: null}; // 当前选中的段和位置
+// let selected = {layer: null, index: null, side: null}; // 当前选中的段和位置
+
+export const selected = ref({layer: null, index: null, side: null});
 
 // 左右环状图的数据配置
 const leftArr = data[0].subsidiariesList.map(item => item.length);  // 左侧环状图每层的分段数
@@ -85,6 +89,16 @@ export function draw(ctx, img, width, height, time) {
   ctx.restore();
 }
 
+// 导出重置函数
+export function resetHoverPause(currentTime) {
+  hoverPause = false;
+  if (lastPauseStart !== null) {
+    pauseOffset += currentTime - lastPauseStart; // 累积暂停时间
+    lastPauseStart = null;
+  }
+  leftTimeStatic = currentTime - pauseOffset; // 更新 leftTimeStatic 为当前连续时间
+}
+
 // 初始化交互事件
 export function initInteraction(canvas, redrawCallback) {
   // 鼠标移动事件：检测是否悬停在左侧环上
@@ -113,10 +127,10 @@ export function initInteraction(canvas, redrawCallback) {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const prevSelected = JSON.stringify(selected); // Store previous state for comparison
+    const prevSelected = JSON.stringify(selected.value); // Store previous state for comparison
     handleClick(x, y, canvas.width, canvas.height, leftTimeStatic);
     // Trigger redraw after click, pass time to ensure correct rendering
-    if (redrawCallback && prevSelected !== JSON.stringify(selected)) {
+    if (redrawCallback && prevSelected !== JSON.stringify(selected.value)) {
       redrawCallback(hoverPause ? leftTimeStatic : null);
     }
   });
@@ -191,8 +205,8 @@ function handleClick(px, py, width, height, time) {
         const finalSegIdx = segIdx >= segCnt ? segCnt - 1 : segIdx;
         
         // 设置选中状态
-        selected = {layer, index: finalSegIdx, side: 'left'};
-        console.log(`Selected: Left Ring, Layer ${layer}, Segment ${finalSegIdx}, Angle ${adjAng}, Distance ${dist}, Outer ${outer}, Inner ${inner}`);
+        selected.value = {layer, index: finalSegIdx, side: 'left'};
+        // console.log(`Selected: Left Ring, Layer ${layer}, Segment ${finalSegIdx}, Angle ${adjAng}, Distance ${dist}, Outer ${outer}, Inner ${inner}`);
         return;
       }
     }
@@ -233,16 +247,16 @@ function handleClick(px, py, width, height, time) {
         const finalSegIdx = segIdx >= segCnt ? segCnt - 1 : segIdx;
         
         // 设置选中状态
-        selected = {layer, index: finalSegIdx, side: 'right'};
-        console.log(`Selected: Right Ring, Layer ${layer}, Segment ${finalSegIdx}, Angle ${adjAng}, Distance ${dist}, Outer ${outer}, Inner ${inner}`);
+        selected.value = {layer, index: finalSegIdx, side: 'right'};
+        // console.log(`Selected: Right Ring, Layer ${layer}, Segment ${finalSegIdx}, Angle ${adjAng}, Distance ${dist}, Outer ${outer}, Inner ${inner}`);
         return;
       }
     }
   }
   
   // 点击在环外，清除选中状态
-  selected = {layer: null, index: null, side: null};
-  console.log('Clicked outside rings, selection cleared');
+  selected.value = {layer: null, index: null, side: null};
+  // console.log('Clicked outside rings, selection cleared');
 }
 
 // 绘制环状图
@@ -303,9 +317,9 @@ function drawRings(ctx, width, height, globalTime, leftTime) {
         ctx.closePath();
         
         // 修复颜色逻辑
-      if (selected.side && 
-          ((selected.side == 'left' && selected.layer == layer && selected.index == i && isLeft) ||
-           (selected.side == 'right' && selected.layer == layer && selected.index == i && !isLeft))) {
+      if (selected.value.side && 
+          ((selected.value.side == 'left' && selected.value.layer == layer && selected.value.index == i && isLeft) ||
+           (selected.value.side == 'right' && selected.value.layer == layer && selected.value.index == i && !isLeft))) {
         ctx.fillStyle = ring_active_color;
       } else {
         let col = isLeft ? leftData['subsidiariesList'][layer][i]['color'] : rightData['subsidiariesList'][layer][i]['color'];
@@ -383,11 +397,25 @@ function drawRings(ctx, width, height, globalTime, leftTime) {
     ctx.arc(cx, cy, ringCircle, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fill();
+
+    // 中心圆写字
+    ctx.save();
+    ctx.font = `${Math.min(ringCircle * 0.5, 16)}px Arial`; // 字体大小适配中心圆
+    ctx.fillStyle = '#ffffff'; // 白色文字以确保对比度
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(isLeft ? leftData.company: rightData.company, cx, cy); // 中心点绘制文字
+    ctx.restore();
+    
   }
 
   // 绘制左侧环状图：4层，交替旋转
-  drawLayers(width / 4, height / 2, width / 4 - 60, leftData.clockwise, leftTime, true);
+  drawLayers(width / 4, height / 2, width / 4 - ring_circle, leftData.clockwise, leftTime, true);
 
   // 绘制右侧环状图：动态层数，静止
-  drawLayers(width * 3 / 4, height / 2, width / 4 - 60, Array(rightLayers).fill(null), globalTime, false);
+  drawLayers(width * 3 / 4, height / 2, width / 4 - ring_circle, Array(rightLayers).fill(null), globalTime, false);
 }
+
+
+
+// 获取selected

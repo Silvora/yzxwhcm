@@ -129,6 +129,11 @@ const dataBase = {
             ]
         }
       
+    ],
+
+    // 详情列表
+    "tables":[
+
     ]
 }
 

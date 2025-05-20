@@ -1,16 +1,52 @@
 <template>
-  <div class="container" ref="container">
-    <canvas ref="canvas"
+
+  <div class="page">
+    <div
+      class="table-btn"
+      @click="isTable = !isTable"
+    >详情列表
+    </div>
+    <div class="container" ref="container">
+      <canvas ref="canvas"
             class="orbit"
             :width="width"
             :height="height" />
+    </div>
+    
+    <TableModal v-model:isTable="isTable"></TableModal>
+    <TxtModal v-model:isTxt="isTxt" :companyData="companyData"></TxtModal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import TableModal from './components/TableModal.vue';
+import TxtModal from './components/TxtModal.vue';
+import { ref, onMounted, onBeforeUnmount, watchEffect } from 'vue';
 import logoSrc from '@/assets/vue.svg';
-import { draw as capsuleDraw , initInteraction} from '@/utils/capsule.js';
+import { draw as capsuleDraw , initInteraction, selected} from '@/utils/capsule.js';
+import dataBase from "@/assets/data.js"
+
+const isTable = ref(false);
+const isTxt = ref(false);
+const companyData = ref(null);
+
+// const selectedRef = ref(selected)
+
+
+watchEffect(()=>{
+  if(selected.value.side){
+    if(selected.value.side === 'left'){
+      companyData.value = dataBase['data'][0]['subsidiariesList'][selected.value.layer][selected.value.index]
+    }
+    if(selected.value.side === 'right'){
+      companyData.value = dataBase['data'][1]['subsidiariesList'][selected.value.layer][selected.value.index]
+    }
+    isTxt.value = true
+
+  }
+
+
+})
 
 /* 画布容器 */
 const container = ref(null);
@@ -66,6 +102,20 @@ onBeforeUnmount(() => cancelAnimationFrame(rafId));
 </script>
 
 <style scoped>
+.page{
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.table-btn{
+  background: red;
+  margin-top: 10px;
+  padding: 8px 18px;
+  cursor: pointer;
+}
 .container {
   width: 90%;
   height: 90vh;
